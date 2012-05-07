@@ -2,16 +2,14 @@ GHC=ghc
 LEX=alex
 PARSE=happy
 
-LEX_SOURCE = Lexer.x
-PARSE_SOURCE = Parser.y
-
 default: lexer
 
 lexer: src/Main.hs src/Lexer.x
-	cd src; $(LEX) $(LEX_SOURCE)
-	$(GHC) -o lexer src/$(LEX_SOURCE:.x=.hs) src/Main.hs
+	cd src; $(LEX) Lexer.x
+	$(GHC) -o lexer src/Lexer.hs src/Main.hs
 
 clean:
-	/bin/rm -f *.o
-	/bin/rm -f *.hi
-	/bin/rm lexer
+	/bin/rm -f src/*.o
+	/bin/rm -f src/*.hi
+	/bin/rm -f src/Lexer.hs
+	/bin/rm -f lexer
