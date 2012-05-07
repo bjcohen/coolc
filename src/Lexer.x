@@ -1,9 +1,11 @@
 {
 module Lexer where
 
-import Numeric (readDec)
+import Numeric (readDec, showOct)
 import Data.Maybe
 import Control.Monad
+import Data.Char (isPrint, ord)
+import Text.Printf (printf)
 }
 
 %wrapper "monadUserState"
@@ -15,42 +17,70 @@ $upper   = [A-Z]                -- upper case characters
 $lower   = [a-z]                -- lower case characters
 $punc    = [\{\}\(\)\;\:\~\.\,\@]
 $alphnum = [$alpha $digit]
-  
+$unprint = [\n \b \f \r \t \\ \" \-]
+$a       = [aA]
+$b       = [bB]
+$c       = [cC]
+$d       = [dD]
+$e       = [eE]
+$f       = [fF]
+$g       = [gG]
+$h       = [hH]
+$i       = [iI]
+$j       = [jJ]
+$k       = [kK]
+$l       = [lL]
+$m       = [mM]
+$n       = [nN]
+$o       = [oO]
+$p       = [pP]
+$q       = [qQ]
+$r       = [rR]
+$s       = [sS]
+$t       = [tT]
+$u       = [uU]
+$v       = [vV]
+$w       = [wW]
+$x       = [xX]
+$y       = [yY]
+$z       = [zZ]
+
 @tident  = $upper($alpha|_|$digit)*
 @ident   = $lower($alpha|_|$digit)*
 @oper    = "+" | "-" | "*" | "/" | "<" | "<=" | "="
 
 tokens :-
   
-<0>                  $white+		  { updatePos }		
+<0>                  $white+	          { updatePos }		
 <0>                  "--".*               { updatePos }
-<0>                  "class"              { mkL CLASS }
-<0>                  "else"               { mkL ELSE }
-<0>                  "fi"                 { mkL FI }
-<0>                  "if"                 { mkL IF }
-<0>                  "in"                 { mkL IN }
-<0>                  "inherits"           { mkL INHERITS }
-<0>                  "isvoid"             { mkL ISVOID }
-<0>                  "let"                { mkL LET }
-<0>                  "loop"               { mkL LOOP }
-<0>                  "pool"               { mkL POOL }
-<0>                  "then"               { mkL THEN }
-<0>                  "while"              { mkL WHILE }
-<0>                  "case"               { mkL CASE }
-<0>                  "esac"               { mkL ESAC }
-<0>                  "new"                { mkL NEW }
-<0>                  "of"                 { mkL OF }
-<0>                  "not"                { mkL NOT }
+<0>                  $c$l$a$s$s           { mkL CLASS }
+<0>                  $e$l$s$e             { mkL ELSE }
+<0>                  $f$i                 { mkL FI }
+<0>                  $i$f                 { mkL IF }
+<0>                  $i$n                 { mkL IN }
+<0>                  $i$n$h$e$r$i$t$s     { mkL INHERITS }
+<0>                  $i$s$v$o$i$d         { mkL ISVOID }
+<0>                  $l$e$t               { mkL LET }
+<0>                  $l$o$o$p             { mkL LOOP }
+<0>                  $p$o$o$l             { mkL POOL }
+<0>                  $t$h$e$n             { mkL THEN }
+<0>                  $w$h$i$l$e           { mkL WHILE }
+<0>                  $c$a$s$e             { mkL CASE }
+<0>                  $e$s$a$c             { mkL ESAC }
+<0>                  $n$e$w               { mkL NEW }
+<0>                  $o$f                 { mkL OF }
+<0>                  $n$o$t               { mkL NOT }
 <0>                  "*)"                 { lexerErrorAction "Unmatched *)"}
 <0>                  \"                   { enterString `andBegin` state_string }
 <state_string>       \n                   { leaveStringWithError "Unterminated string constant" `andBegin` state_initial }
 <state_string>       \0                   { stringError "String contains null character." }
-<state_string>       \"                   { leaveString `andBegin` state_initial }
 <state_string>       \\$alphnum           { addControlToString }
+<state_string>       \\$unprint           { addControlToString }
+<state_string>       \"                   { leaveString `andBegin` state_initial }
 <state_string>       .                    { addCurrentToString }                     
 <0>                  $digit+              { getInteger }
-<0>                  f[aA][lL][sS][eE]    { mkL (BOOL_CONST False) }
-<0>                  t[rR][uU][eE]        { mkL (BOOL_CONST True) }
+<0>                  f$a$l$s$e            { mkL (BOOL_CONST False) }
+<0>                  t$r$u$e              { mkL (BOOL_CONST True) }
 <0>                  @tident              { getIdent TYPEID }
 <0>                  @ident               { getIdent OBJECTID }
 <0>                  "<-"                 { mkL ASSIGN }
@@ -67,6 +97,7 @@ tokens :-
 {
                       
 data Token = Token AlexPosn TokenClass (Maybe String)
+
 instance Show Token where
   show (Token _ EOF _) = ""
   show (Token p cl mbs) = showp p ++ " " ++ show cl
@@ -74,6 +105,20 @@ instance Show Token where
       showp (AlexPn _ ln _) = "#" ++ show ln
       showmbs Nothing = ""
       showmbs (Just s) = show s
+
+data SCString = SCS String deriving Eq
+
+instance Show SCString where
+  show (SCS s) = "\"" ++ foldr (++) "" (map show' s) ++ "\""
+    where show' c = if and [isPrint c, not (c == '\\'), not (c == '"')] then [c]
+                    else case c of
+                      '\b' -> "\\b"
+                      '\t' -> "\\t"
+                      '\n' -> "\\n"
+                      '\f' -> "\\f"
+                      '\\' -> "\\\\"
+                      '"' -> "\\\""
+                      _    -> "\\" ++ printf "%.3o" (ord c)
 
 instance Show TokenClass where
   show CLASS = "CLASS"
@@ -94,7 +139,7 @@ instance Show TokenClass where
   show OF = "OF"
   show NOT = "NOT"
   show (STR_CONST s) = "STR_CONST " ++ show s
-  show (INT_CONST i) = "INT_CONST " ++ show i
+  show (INT_CONST s) = "INT_CONST " ++ s
   show (BOOL_CONST b) = "BOOL_CONST " ++
                         (if b then "true" else "false")
   show (TYPEID s) = "TYPEID " ++ s
@@ -131,8 +176,8 @@ data TokenClass =
   | NEW
   | OF
   | NOT
-  | STR_CONST String
-  | INT_CONST Int
+  | STR_CONST SCString
+  | INT_CONST String
   | BOOL_CONST Bool
   | TYPEID String
   | OBJECTID String
@@ -172,7 +217,7 @@ alexInitUserState = AlexUserState
                       lexerCommentDepth = 0
                     , lexerStringValue = ""
                     , lexerStringState = Out
-                    , lexerCurrentPos = undefined
+                    , lexerCurrentPos = AlexPn 0 0 0
                     }
   
 getLexerCommentDepth :: Alex Int
@@ -220,28 +265,28 @@ updatePos (p, _, _) _ =
 embedComment input len = 
   do cd <- getLexerCommentDepth
      setLexerCommentDepth (cd + 1)
-     skip input len
+     updatePos input len
      
 unembedComment input len =
     do cd <- getLexerCommentDepth
        setLexerCommentDepth (cd - 1)
        when (cd == 1) (alexSetStartCode state_initial)
-       skip input len
+       updatePos input len
        
 enterString input len =
     do setLexerStringState In
        setLexerStringValue ""
-       skip input len 
+       updatePos input len 
        
-addCurrentToString (p, _, input) len =
+addCurrentToString ai@(p, _, input) len =
   do addCharToLexerStringValue c
-     alexMonadScan
+     updatePos ai len
        where
          c = if (len == 1) then head input else error "Invalid call to addCurrentToString"
 
-addControlToString (p, _, input) len =
+addControlToString ai@(p, _, input) len =
   do addCharToLexerStringValue c
-     alexMonadScan
+     updatePos ai len
        where
          cc = if (len == 2) then take len input else error "Control code not length 2"
          s = head (tail cc)
@@ -250,18 +295,19 @@ addControlToString (p, _, input) len =
            't' -> '\t'
            'n' -> '\n'
            'f' -> '\f'
-           _ -> s
+           _   -> s
 
 leaveString ai@(p, _, input) len =
     do ss <- getLexerStringState
        case ss of
-         Error msg -> lexerErrorAction msg ai len
+         Error msg -> do setLexerStringState Out
+                         lexerErrorAction msg ai len
          Out -> error "leaveString while out of string"
          In -> do s <- getLexerStringValue
                   setLexerStringState Out
                   if (length s <= 1024)
-                    then return (Token p (STR_CONST (reverse s)) (Just t))
-                    else return (Token p (ERROR "String constant too long") (Just t))
+                    then return (Token p (STR_CONST (SCS (reverse s))) (Just t))
+                    else lexerErrorAction "String constant too long" ai len
                       where t = take len input
 
 leaveStringWithError msg ai len =          
@@ -274,13 +320,12 @@ leaveStringWithError msg ai len =
      
 stringError msg ai@(p, _, input) len =
   do setLexerStringState (Error msg)
-     skip ai len
+     updatePos ai len
        
 getInteger ai@(p, _, input) len = 
-  if (length r == 1) then return (Token p (INT_CONST (fst (head r))) (Just s)) else return (lexerError "Invalid Int" p (Just s))
+  return (Token p (INT_CONST s) (Just s))
     where
       s = take len input
-      r = readDec s
   
 getIdent tc (p, _, input) len =
   return (Token p (tc s) (Just s))
