@@ -1,7 +1,8 @@
 GHC=ghc
 LEX=alex
+LEXOPTS=
 PARSE=happy
-PARSEOPTS=--ghc
+PARSEOPTS=--ghc -i
 default: lexer
 
 lexer: src/LexMain.hs src/Lexer.x
