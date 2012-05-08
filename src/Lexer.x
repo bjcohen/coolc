@@ -53,23 +53,23 @@ tokens :-
   
 <0>                  $white+	          { updatePos }		
 <0>                  "--".*               { updatePos }
-<0>                  $c$l$a$s$s           { mkL CLASS }
-<0>                  $e$l$s$e             { mkL ELSE }
-<0>                  $f$i                 { mkL FI }
-<0>                  $i$f                 { mkL IF }
-<0>                  $i$n                 { mkL IN }
-<0>                  $i$n$h$e$r$i$t$s     { mkL INHERITS }
-<0>                  $i$s$v$o$i$d         { mkL ISVOID }
-<0>                  $l$e$t               { mkL LET }
-<0>                  $l$o$o$p             { mkL LOOP }
-<0>                  $p$o$o$l             { mkL POOL }
-<0>                  $t$h$e$n             { mkL THEN }
-<0>                  $w$h$i$l$e           { mkL WHILE }
-<0>                  $c$a$s$e             { mkL CASE }
-<0>                  $e$s$a$c             { mkL ESAC }
-<0>                  $n$e$w               { mkL NEW }
-<0>                  $o$f                 { mkL OF }
-<0>                  $n$o$t               { mkL NOT }
+<0>                  $c$l$a$s$s           { mkL TCLASS }
+<0>                  $e$l$s$e             { mkL TELSE }
+<0>                  $f$i                 { mkL TFI }
+<0>                  $i$f                 { mkL TIF }
+<0>                  $i$n                 { mkL TIN }
+<0>                  $i$n$h$e$r$i$t$s     { mkL TINHERITS }
+<0>                  $i$s$v$o$i$d         { mkL TISVOID }
+<0>                  $l$e$t               { mkL TLET }
+<0>                  $l$o$o$p             { mkL TLOOP }
+<0>                  $p$o$o$l             { mkL TPOOL }
+<0>                  $t$h$e$n             { mkL TTHEN }
+<0>                  $w$h$i$l$e           { mkL TWHILE }
+<0>                  $c$a$s$e             { mkL TCASE }
+<0>                  $e$s$a$c             { mkL TESAC }
+<0>                  $n$e$w               { mkL TNEW }
+<0>                  $o$f                 { mkL TOF }
+<0>                  $n$o$t               { mkL TNOT }
 <0>                  "*)"                 { lexerErrorAction "Unmatched *)"}
 <0>                  \"                   { enterString `andBegin` state_string }
 <state_string>       \n                   { leaveStringWithError "Unterminated string constant" `andBegin` state_initial }
@@ -79,12 +79,12 @@ tokens :-
 <state_string>       \"                   { leaveString `andBegin` state_initial }
 <state_string>       .                    { addCurrentToString }                     
 <0>                  $digit+              { getInteger }
-<0>                  f$a$l$s$e            { mkL (BOOL_CONST False) }
-<0>                  t$r$u$e              { mkL (BOOL_CONST True) }
-<0>                  @tident              { getIdent TYPEID }
-<0>                  @ident               { getIdent OBJECTID }
-<0>                  "<-"                 { mkL ASSIGN }
-<0>                  "=>"                 { mkL DARROW }
+<0>                  f$a$l$s$e            { mkL (TBOOL_CONST False) }
+<0>                  t$r$u$e              { mkL (TBOOL_CONST True) }
+<0>                  @tident              { getIdent TTYPEID }
+<0>                  @ident               { getIdent TOBJECTID }
+<0>                  "<-"                 { mkL TASSIGN }
+<0>                  "=>"                 { mkL TDARROW }
 <0>                  @oper                { getOper }
 <0>                  $punc                { getPunc }
 <0>                  "(*"                 { embedComment `andBegin` state_comment }                      
@@ -99,7 +99,7 @@ tokens :-
 data Token = Token AlexPosn TokenClass (Maybe String)
 
 instance Show Token where
-  show (Token _ EOF _) = ""
+  show (Token _ TEOF _) = ""
   show (Token p cl mbs) = showp p ++ " " ++ show cl
     where
       showp (AlexPn _ ln _) = "#" ++ show ln
@@ -121,74 +121,94 @@ instance Show SCString where
                       _    -> "\\" ++ printf "%.3o" (ord c)
 
 instance Show TokenClass where
-  show CLASS = "CLASS"
-  show ELSE = "ELSE"
-  show FI = "FI"
-  show IF = "IF"
-  show IN = "IN"
-  show INHERITS = "INHERITS"
-  show ISVOID = "ISVOID"
-  show LET = "LET"
-  show LOOP = "LOOP"
-  show POOL = "POOL"
-  show THEN = "THEN"
-  show WHILE = "WHILE"
-  show CASE = "CASE"
-  show ESAC = "ESAC"
-  show NEW = "NEW"
-  show OF = "OF"
-  show NOT = "NOT"
-  show (STR_CONST s) = "STR_CONST " ++ show s
-  show (INT_CONST s) = "INT_CONST " ++ s
-  show (BOOL_CONST b) = "BOOL_CONST " ++
-                        (if b then "true" else "false")
-  show (TYPEID s) = "TYPEID " ++ s
-  show (OBJECTID s) = "OBJECTID " ++ s
-  show ASSIGN = "ASSIGN"
-  show (OPER s) = show (head s)
-  show LE = "LE"
-  show DARROW = "DARROW"
-  show (PUNC s) = show (head s)
-  show (ERROR s) = "ERROR " ++ show s
-  show EOF = ""
+  show TCLASS = "CLASS"
+  show TELSE = "ELSE"
+  show TFI = "FI"
+  show TIF = "IF"
+  show TIN = "IN"
+  show TINHERITS = "INHERITS"
+  show TISVOID = "ISVOID"
+  show TLET = "LET"
+  show TLOOP = "LOOP"
+  show TPOOL = "POOL"
+  show TTHEN = "THEN"
+  show TWHILE = "WHILE"
+  show TCASE = "CASE"
+  show TESAC = "ESAC"
+  show TNEW = "NEW"
+  show TOF = "OF"
+  show TNOT = "NOT"
+  show (TSTR_CONST s) = "STR_CONST " ++ show s
+  show (TINT_CONST s) = "INT_CONST " ++ s
+  show (TBOOL_CONST b) = "BOOL_CONST " ++
+                         (if b then "true" else "false")
+  show (TTYPEID s) = "TYPEID " ++ s
+  show (TOBJECTID s) = "OBJECTID " ++ s
+  show TASSIGN = "ASSIGN"
+  show (TOPER o) = show o
+  show TDARROW = "DARROW"
+  show (TPUNC o) = show o
+  show (TERROR s) = "ERROR " ++ show s
+  show TEOF = ""
+              
+instance Show Oper where
+  show OPLUS   = "'+'"
+  show OMINUS  = "'-'"
+  show OTIMES  = "'*'"
+  show ODIV    = "'/'"
+  show OLT     = "'<'"
+  show OLE     = "LE"
+  show OEQ     = "'='"
+                  
+instance Show Punc where
+  show PLBRACE = "'{'"
+  show PRBRACE = "'}'"
+  show PLPAREN = "'('"
+  show PRPAREN = "')'"
+  show PSEMI   = "';'"
+  show PCOLON  = "':'"
+  show PTILDE  = "'~'"
+  show PPERIOD = "'.'"
+  show PCOMMA  = "','"
+  show PAT     = "'@'"
 
-data Oper = PLUS | MINUS | TIMES | DIV | LT | LTE | EQ
+data Oper = OPLUS | OMINUS | OTIMES | ODIV | OLT | OLE | OEQ deriving Eq
     
-data Punc = LBRACE | RBRACE | LPAREN | RPAREN | SEMI | COLON | TILDE
+data Punc = PLBRACE | PRBRACE | PLPAREN | PRPAREN | PSEMI |
+            PCOLON | PTILDE | PPERIOD | PCOMMA | PAT deriving Eq
 
 -- token type
 
 data TokenClass =
-  CLASS
-  | ELSE
-  | FI
-  | IF
-  | IN
-  | INHERITS
-  | ISVOID
-  | LET
-  | LOOP
-  | POOL
-  | THEN
-  | WHILE
-  | CASE
-  | ESAC
-  | NEW
-  | OF
-  | NOT
-  | STR_CONST SCString
-  | INT_CONST String
-  | BOOL_CONST Bool
-  | TYPEID String
-  | OBJECTID String
-  | ASSIGN
-  | OPER String
-  | LE
-  | DARROW
-  | PUNC String
-  | ERROR String
-  | EOF
-  | LET_STMT -- PA3?
+  TCLASS
+  | TELSE
+  | TFI
+  | TIF
+  | TIN
+  | TINHERITS
+  | TISVOID
+  | TLET
+  | TLOOP
+  | TPOOL
+  | TTHEN
+  | TWHILE
+  | TCASE
+  | TESAC
+  | TNEW
+  | TOF
+  | TNOT
+  | TSTR_CONST SCString
+  | TINT_CONST String
+  | TBOOL_CONST Bool
+  | TTYPEID String
+  | TOBJECTID String
+  | TASSIGN
+  | TOPER Oper
+  | TDARROW
+  | TPUNC Punc
+  | TERROR String
+  | TEOF
+  | TLET_STMT -- PA3?
   deriving (Eq)
 
 mkL :: TokenClass -> AlexInput -> Int -> Alex Token
@@ -306,7 +326,7 @@ leaveString ai@(p, _, input) len =
          In -> do s <- getLexerStringValue
                   setLexerStringState Out
                   if (length s <= 1024)
-                    then return (Token p (STR_CONST (SCS (reverse s))) (Just t))
+                    then return (Token p (TSTR_CONST (SCS (reverse s))) (Just t))
                     else lexerErrorAction "String constant too long" ai len
                       where t = take len input
 
@@ -323,7 +343,7 @@ stringError msg ai@(p, _, input) len =
      updatePos ai len
        
 getInteger ai@(p, _, input) len = 
-  return (Token p (INT_CONST s) (Just s))
+  return (Token p (TINT_CONST s) (Just s))
     where
       s = take len input
   
@@ -333,18 +353,41 @@ getIdent tc (p, _, input) len =
       s = take len input
   
 getOper ai@(p, _, input) len =
-  if len == 1 then getIdent OPER ai len
-  else return (Token p LE (Just s))
-       where
-         s = take len input
+  return (Token p (TOPER o) (Just s))
+    where
+      s = take len input
+      o = case s of
+        "+"  -> OPLUS
+        "-"  -> OMINUS
+        "*"  -> OTIMES
+        "/"  -> ODIV
+        "<"  -> OLT
+        "<=" -> OLE
+        "="  -> OEQ
+        _    -> error "Got bad operator in lexer"
   
-getPunc = getIdent PUNC    
+getPunc ai@(p, _, input) len =
+  return (Token p (TPUNC o) (Just s))
+    where
+      s = take len input
+      o = case s of
+        "{" -> PLBRACE
+        "}" -> PRBRACE
+        "(" -> PLPAREN
+        ")" -> PRPAREN
+        ";" -> PSEMI
+        ":" -> PCOLON
+        "~" -> PTILDE
+        "." -> PPERIOD
+        "," -> PCOMMA
+        "@" -> PAT
+        _   -> error "Got bad punctuation in lexer"
   
 lexerErrorAction msg (p, _, input) len =
   return (lexerError msg p (Just (take len input)))
           
 lexerError msg p ms = 
-  (Token p (ERROR msg) ms)
+  (Token p (TERROR msg) ms)
       
 lexerIllegalCharacter (p, _, input) len =
   return (lexerError c p (Just c))
@@ -355,12 +398,12 @@ alexEOF :: Alex Token
 alexEOF = 
   do
     p <- getLexerCurrentPos
-    return (Token p EOF Nothing)
+    return (Token p TEOF Nothing)
   
 scanner :: String -> Either String [Token]
 scanner str = let loop = do t <- alexMonadScan
                             let tok@(Token p cl s) = t
-                            if (cl == EOF)
+                            if (cl == TEOF)
                                then do f1 <- getLexerStringState
                                        d2 <- getLexerCommentDepth
                                        if ((f1 == Out) && (d2 == 0))
