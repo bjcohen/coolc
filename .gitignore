@@ -7,3 +7,4 @@ cabal-dev
 lexer
 *.pl
 src/Lexer.hs
+src/Parser.hs
