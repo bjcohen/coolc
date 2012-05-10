@@ -1,10 +1,19 @@
 module Syntax where
+          
+newtype Symbol = Symbol String deriving (Eq,Ord,Show)
 
-newtype Symbol = Symbol String deriving (Eq)
+class Symbolable a where
+  newSymbol :: a -> Symbol
+
+instance Symbolable String where
+  newSymbol = Symbol
+  
+instance Symbolable Int where
+  newSymbol i = Symbol $ show i
 
 data Program =
   Program              { programClasses       :: Classes }
-  deriving Eq
+  deriving (Eq,Show)
                 
 type Classes = [Class]
 data Class =
@@ -12,7 +21,7 @@ data Class =
                        , classParent          :: Symbol
                        , classFeatures        :: Features
                        , classFilename        :: Symbol }
-  deriving Eq
+  deriving (Eq,Show)
                     
 type Features = [Feature]
 data Feature =
@@ -23,13 +32,13 @@ data Feature =
   | Attr               { attrName             :: Symbol
                        , attrType             :: Symbol
                        , attrInit             :: Expression }
-  deriving Eq
+  deriving (Eq,Show)
 
 type Formals = [Formal]
 data Formal =
   Formal               { formalName           :: Symbol
                        , formalType           :: Symbol }
-  deriving Eq
+  deriving (Eq,Show)
 
 type Expressions = [Expression]
 data Expression =
@@ -77,11 +86,11 @@ data Expression =
   | IsVoid             { isVoidE              :: Expression }
   | NoExpr
   | Object             { objectName           :: Symbol }
-  deriving Eq
+  deriving (Eq,Show)
 
 type Cases = [Case]
 data Case =
   Branch               { branchName           :: Symbol
                        , branchType           :: Symbol
                        , branchExpr           :: Expression }
-  deriving Eq
+  deriving (Eq,Show)

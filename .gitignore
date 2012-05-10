@@ -8,3 +8,7 @@ lexer
 *.pl
 src/Lexer.hs
 src/Parser.hs
+parser
+*.info
+ec2_host
+*.aps

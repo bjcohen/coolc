@@ -1,17 +1,23 @@
 GHC=ghc
+GHCOPTS=-XTypeSynonymInstances
 LEX=alex
 LEXOPTS=--ghc --info
 PARSE=happy
 PARSEOPTS=--ghc --info
-default: lexer
+
+default: parser
 
 lexer: src/LexMain.hs src/Lexer.x
 	cd src; $(LEX) $(LEXOPTS) Lexer.x
-	$(GHC) -o lexer src/Lexer.hs src/LexMain.hs
+	$(GHC) $(GHCOPTS) -o lexer src/Lexer.hs src/LexMain.hs
 
-parser: src/ParseMain.hs src/Parser.y src/Lexer.hs
+parser: src/ParseMain.hs src/Parser.y lexer
 	cd src; $(PARSE) $(PARSEOPTS) Parser.y
-	$(GHC) -o parser src/Parser.hs src/ParseMain.hs src/Lexer.hs
+	$(GHC) $(GHCOPTS) -o parser src/ParseMain.hs src/Parser.hs src/Syntax.hs src/Lexer.hs
+
+debug: LEXOPTS += -d
+debug: PARSEOPTS += -ad
+debug: default;
 
 clean:
 	/bin/rm -f src/*.o

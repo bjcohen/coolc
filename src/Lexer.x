@@ -99,26 +99,24 @@ tokens :-
 data Token = Token AlexPosn TokenClass (Maybe String)
 
 instance Show Token where
-  show (Token _ TEOF _) = ""
+  show (Token _ TEOF _) = "#EOF"
   show (Token p cl mbs) = showp p ++ " " ++ show cl
     where
       showp (AlexPn _ ln _) = "#" ++ show ln
       showmbs Nothing = ""
       showmbs (Just s) = show s
 
-data SCString = SCS String deriving Eq
-
-instance Show SCString where
-  show (SCS s) = "\"" ++ foldr (++) "" (map show' s) ++ "\""
-    where show' c = if and [isPrint c, not (c == '\\'), not (c == '"')] then [c]
-                    else case c of
-                      '\b' -> "\\b"
-                      '\t' -> "\\t"
-                      '\n' -> "\\n"
-                      '\f' -> "\\f"
-                      '\\' -> "\\\\"
-                      '"' -> "\\\""
-                      _    -> "\\" ++ printf "%.3o" (ord c)
+scshow :: String -> String
+scshow s = "\"" ++ foldr (++) "" (map show' s) ++ "\""
+  where show' c = if and [isPrint c, not (c == '\\'), not (c == '"')] then [c]
+                  else case c of
+                    '\b' -> "\\b"
+                    '\t' -> "\\t"
+                    '\n' -> "\\n"
+                    '\f' -> "\\f"
+                    '\\' -> "\\\\"
+                    '"' -> "\\\""
+                    _    -> "\\" ++ printf "%.3o" (ord c)
 
 instance Show TokenClass where
   show TCLASS = "CLASS"
@@ -138,7 +136,7 @@ instance Show TokenClass where
   show TNEW = "NEW"
   show TOF = "OF"
   show TNOT = "NOT"
-  show (TSTR_CONST s) = "STR_CONST " ++ show s
+  show (TSTR_CONST s) = "STR_CONST " ++ scshow s
   show (TINT_CONST s) = "INT_CONST " ++ s
   show (TBOOL_CONST b) = "BOOL_CONST " ++
                          (if b then "true" else "false")
@@ -197,7 +195,7 @@ data TokenClass =
   | TNEW
   | TOF
   | TNOT
-  | TSTR_CONST SCString
+  | TSTR_CONST String
   | TINT_CONST String
   | TBOOL_CONST Bool
   | TTYPEID String
@@ -326,7 +324,7 @@ leaveString ai@(p, _, input) len =
          In -> do s <- getLexerStringValue
                   setLexerStringState Out
                   if (length s <= 1024)
-                    then return (Token p (TSTR_CONST (SCS (reverse s))) (Just t))
+                    then return (Token p (TSTR_CONST (reverse s)) (Just t))
                     else lexerErrorAction "String constant too long" ai len
                       where t = take len input
 

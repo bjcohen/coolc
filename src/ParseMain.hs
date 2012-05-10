@@ -5,6 +5,7 @@ import Parser
 import Control.Monad (when)
 import System (getArgs)
 import Directory (doesFileExist)
+import Control.Monad.State (evalStateT)
 
 main :: IO ()
 main = do
@@ -13,7 +14,7 @@ main = do
   flag <- doesFileExist filename
   when (not flag) (error (filename ++ " does not exist"))
   t <- readFile filename
-  putStrLn $ "#name " ++ show filename
-  case scanner t of
-    Left st -> error st
-    Right ls -> mapM_ print (cool ls)
+  toks <- (return $ case (scanner t) of Left er -> error er; Right toks -> toks)
+  let (st, p) = stGet $ evalStateT (cool toks) 0
+  print st
+  print p
