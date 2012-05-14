@@ -1,5 +1,5 @@
 GHC=ghc
-GHCOPTS=-XTypeSynonymInstances
+GHCOPTS=-XTypeSynonymInstances -XDeriveDataTypeable
 LEX=alex
 LEXOPTS=--ghc --info
 PARSE=happy
@@ -11,7 +11,7 @@ lexer: src/LexMain.hs src/Lexer.x
 	cd src; $(LEX) $(LEXOPTS) Lexer.x
 	$(GHC) $(GHCOPTS) -o lexer src/Lexer.hs src/LexMain.hs
 
-parser: src/ParseMain.hs src/Parser.y lexer
+parser: src/ParseMain.hs src/Parser.y lexer src/Syntax.hs
 	cd src; $(PARSE) $(PARSEOPTS) Parser.y
 	$(GHC) $(GHCOPTS) -o parser src/ParseMain.hs src/Parser.hs src/Syntax.hs src/Lexer.hs
 
