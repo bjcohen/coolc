@@ -1,6 +1,9 @@
 module Syntax where
           
-newtype Symbol = Symbol String deriving (Eq,Ord,Show)
+newtype Symbol = Symbol String deriving (Eq,Ord)
+
+instance Show Symbol where
+  show (Symbol s) = s
 
 class Symbolable a where
   newSymbol :: a -> Symbol
@@ -10,7 +13,16 @@ instance Symbolable String where
   
 instance Symbolable Int where
   newSymbol i = Symbol $ show i
-
+  
+class SyntaxTerm a  
+instance SyntaxTerm a => SyntaxTerm [a]
+instance SyntaxTerm Program  
+instance SyntaxTerm Class
+instance SyntaxTerm Feature
+instance SyntaxTerm Formal
+instance SyntaxTerm Expression
+instance SyntaxTerm Case
+         
 data Program =
   Program              { programClasses       :: Classes }
   deriving (Eq,Show)

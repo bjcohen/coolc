@@ -1,4 +1,4 @@
--- TODO: error handling, pretty printing, classParent, classFilename
+-- TODO: error handling
 
 {
 module Parser where
@@ -11,69 +11,89 @@ import Syntax
 %name cool
 %tokentype { Token }
 %error { parseError }
-%monad { StateT Int StringTable }
+%monad { StateT (Int, String) StringTable }
 
 %token
+                    -- error is 0
   "class"           { Token _ TCLASS _ }
   "else"            { Token _ TELSE _ }
   "fi"              { Token _ TFI _ }
   "if"              { Token _ TIF _ }
-  "in"              { Token _ TIN _ }
+  "in"              { Token _ TIN _ } -- 5
   "inherits"        { Token _ TINHERITS _ }
   "isvoid"          { Token _ TISVOID _ }
   "let"             { Token _ TLET _ }
   "loop"            { Token _ TLOOP _ }
-  "pool"            { Token _ TPOOL _ }
+  "pool"            { Token _ TPOOL _ } -- 10
   "then"            { Token _ TTHEN _ }
   "while"           { Token _ TWHILE _ }
   "case"            { Token _ TCASE _ }
   "esac"            { Token _ TESAC _ }
-  "new"             { Token _ TNEW _ }
+  "new"             { Token _ TNEW _ } -- 15
   "of"              { Token _ TOF _ }
   "not"             { Token _ TNOT _ }
   str_const         { Token _ (TSTR_CONST $$) _ }
   int_const         { Token _ (TINT_CONST $$) _ }
-  bool_const        { Token _ (TBOOL_CONST $$) _ }
+  bool_const        { Token _ (TBOOL_CONST $$) _ } -- 20
   type_id           { Token _ (TTYPEID $$) _ }
   obj_id            { Token _ (TOBJECTID $$) _ }
   "<-"              { Token _ TASSIGN _ }
   "+"               { Token _ (TOPER OPLUS) _ }
-  "-"               { Token _ (TOPER OMINUS) _ }
+  "-"               { Token _ (TOPER OMINUS) _ } -- 25
   "*"               { Token _ (TOPER OTIMES) _ }
   "/"               { Token _ (TOPER ODIV) _ }
   "<"               { Token _ (TOPER OLT) _ }
   "<="              { Token _ (TOPER OLE) _ }
-  "="               { Token _ (TOPER OEQ) _ }
+  "="               { Token _ (TOPER OEQ) _ } -- 30
   "=>"              { Token _ TDARROW _ }
   "{"               { Token _ (TPUNC PLBRACE) _ }
   "}"               { Token _ (TPUNC PRBRACE) _ }
   "("               { Token _ (TPUNC PLPAREN) _ }
-  ")"               { Token _ (TPUNC PRPAREN) _ }
+  ")"               { Token _ (TPUNC PRPAREN) _ } -- 35
   ";"               { Token _ (TPUNC PSEMI) _ }
   ":"               { Token _ (TPUNC PCOLON) _ }
   "~"               { Token _ (TPUNC PTILDE) _ }
   "."               { Token _ (TPUNC PPERIOD) _ }
-  ","               { Token _ (TPUNC PCOMMA) _ }
+  ","               { Token _ (TPUNC PCOMMA) _ } -- 40
   "@"               { Token _ (TPUNC PAT) _ }
   eof               { Token _ TEOF _ }                    
+                    -- %eof is 43
 --lexerror          { Token _ (TERROR $$) _ }
 
-%left "."
-%left "@"
-%left "~"
-%left "isvoid"
-%left "*" "/"
-%left "+" "-"
-%left "<=" "<" "="
-%right LET
-%left "not"
 %right "<-"
+%left "not"
+%right LET
+%left "<=" "<" "="
+%left "+" "-"
+%left "*" "/"
+%left "isvoid"
+%left "~"
+%left "@"
+%left "."
 
 %%
 
 program :: { Program }
 program :
     class ";" class_list                                       { Program{programClasses=$1:$3} }
+
+my_error : error anything   { error "asdf" }
+anything :
+    class_list { error "class_list" }
+  | class { error "class" }
+  | feature_list { error "" }
+  | feature { error "" }
+  | formallist { error "" }
+  | formallist_opt { error "" }
+  | formal { error "" }
+  | expr { error "" }
+  | expr_case_item { error "" }
+  | expr_case_list { error "" }
+  | optassign { error "" }
+  | expr_seq { error "" }
+  | arglist { error "" }
+  | arglist_opt { error "" }
+  | type_id { error "" }
 
 class_list :: { Classes }
 class_list :
@@ -82,8 +102,8 @@ class_list :
 
 class :: { Class }
 class :
-    "class" type_id "{" feature_list "}"                       { Class{className=newSymbol $2,classParent=newSymbol "",classFeatures=$4,classFilename=newSymbol ""} }
-  | "class" type_id "inherits" type_id "{" feature_list "}"    { Class{className=newSymbol $2,classParent=newSymbol $4,classFeatures=$6,classFilename=newSymbol ""} }
+    "class" type_id "{" feature_list "}"                       {% stMkWithFilename (\fn -> Class{className=newSymbol $2,classParent=newSymbol "Object",classFeatures=$4,classFilename=newSymbol fn}) }
+  | "class" type_id "inherits" type_id "{" feature_list "}"    {% stMkWithFilename (\fn -> Class{className=newSymbol $2,classParent=newSymbol $4,classFeatures=$6,classFilename=newSymbol fn}) }
 
 feature_list :: { Features }
 feature_list :
@@ -95,7 +115,7 @@ feature :
     obj_id "(" formallist ")" ":" type_id "{" expr "}"         { Method{methodName=newSymbol $1,methodFormals=$3,methodReturnType=newSymbol $6,methodExpr=$8} }
   | obj_id ":" type_id                                         { Attr{attrName=newSymbol $1,attrType=newSymbol $3,attrInit=NoExpr} }
   | obj_id ":" type_id "<-" expr                               { Attr{attrName=newSymbol $1,attrType=newSymbol $3,attrInit=$5} }
-    
+
 formallist :: { Formals }                       
 formallist :
     formal formallist_opt                                      { $1:$2 }
@@ -108,14 +128,14 @@ formallist_opt :
 
 formal :: { Formal }                                                               
 formal :
-  obj_id ":" type_id                                           { Formal{formalName=newSymbol $1,formalType=newSymbol $3} }
+    obj_id ":" type_id                                         { Formal{formalName=newSymbol $1,formalType=newSymbol $3} }
 
 expr :: { Expression }
 expr :
     obj_id "<-" expr                                           { Assign{assignName=newSymbol $1,assignExpr=$3} }
   | expr "." obj_id "(" arglist ")"                            { Dispatch{dispatchExpr=$1,dispatchName=newSymbol $3,dispatchActual=$5} }
   | expr "@" type_id "." obj_id "(" arglist ")"                { StaticDispatch{staticDispatchExpr=$1,staticDispatchType=newSymbol $3,staticDispatchName=newSymbol $5,staticDispatchActual=$7} }
-  | obj_id "(" arglist ")"                                     { Dispatch{dispatchExpr=NoExpr,dispatchName=newSymbol $1,dispatchActual=$3} }
+  | obj_id "(" arglist ")"                                     { Dispatch{dispatchExpr=Object{objectName=newSymbol "self"},dispatchName=newSymbol $1,dispatchActual=$3} }
   | "if" expr "then" expr "else" expr "fi"                     { Cond{condPred=$2,condThen=$4,condExpression=$6} }
   | "while" expr "loop" expr "pool"                            { Loop{loopPred=$2,loopBody=$4} }
   | "{" expr ";" expr_seq "}"                                  { Block{blockBody=$2:$4} }
@@ -184,17 +204,22 @@ instance Monad StringTable where
   return k =
     StringTable Map.empty k
 
-stAdd :: Symbol -> String -> StateT Int StringTable ()
+stAdd :: Symbol -> String -> StateT (Int, String) StringTable ()
 stAdd sym str =
   StateT $ \i -> StringTable (Map.singleton sym str) ((), i)
 
-stAddAndReturn :: (Symbol -> Expression) -> String -> StateT Int StringTable Expression
+stAddAndReturn :: (Symbol -> Expression) -> String -> StateT (Int, String) StringTable Expression
 stAddAndReturn c str = 
-  do n <- get
-     put (n+1)
+  do (n, s) <- get
+     put (n+1, s)
      sym <- return (newSymbol n)
      stAdd sym str
      return (c sym)
+     
+stMkWithFilename :: SyntaxTerm a => (String -> a) -> StateT (Int,String) StringTable a
+stMkWithFilename c =
+  do (_, filename) <- get
+     return (c filename)
      
 stGet :: StringTable a -> (Map.Map Symbol String, a)     
 stGet (StringTable m k) = (m, k)
@@ -206,5 +231,79 @@ mkLetBody ((id,typ,init):las) ef =
 
 parseError :: [Token] -> a
 parseError ts = error ("Parse error" ++ show ts)
+
+class StanfordPP b where
+  pp :: Map.Map Symbol String -> b -> [String]
+
+prepend2 :: String -> String
+prepend2 = ("  " ++)
+
+instance StanfordPP a => StanfordPP [a] where    
+  pp st cls = cls >>= (pp st)
+    
+instance StanfordPP Program where
+  pp st Program{programClasses=cls} =
+    ["#1", "_program"] ++ (map prepend2 $ pp st cls)
+
+instance StanfordPP Class where    
+  pp st Class{className=name,classParent=par,classFeatures=feat,classFilename=file} =
+    ["#1", "_class"] ++
+    (map prepend2 $ [show name, show par, show $ show file, "("] ++ pp st feat ++ [")"])
+    
+instance StanfordPP Feature where
+  pp st Method{methodName=name,methodFormals=formals,methodReturnType=rt,methodExpr=expr} =
+    ["#1", "_method"] ++ (map prepend2 $ [show name] ++ pp st formals ++ [show rt] ++ pp st expr)
+  pp st Attr{attrName=name,attrType=at,attrInit=init} =
+    ["#1", "_attr"] ++ (map prepend2 $ [show name, show at] ++ pp st init)
+  
+instance StanfordPP Formal where
+  pp st Formal{formalName=name,formalType=typ} =
+    ["#1", "_formal"] ++ (map prepend2 $ [show name, show typ])
+  
+instance StanfordPP Expression where
+  pp st Assign{assignName=name,assignExpr=expr} =
+    ["#1", "_assign"] ++ (map prepend2 $ [show name] ++ pp st expr) ++ [": _no_type"]
+  pp st StaticDispatch{staticDispatchExpr=expr,staticDispatchType=typ,staticDispatchName=name,staticDispatchActual=actual} =
+    ["#1", "_static_dispatch"] ++ (map prepend2 $ pp st expr ++ [show typ, show name] ++ ["("] ++ pp st actual ++ [")"]) ++ [": _no_type"]
+  pp st Dispatch{dispatchExpr=expr,dispatchName=name,dispatchActual=actual} =
+    ["#1", "_dispatch"] ++ (map prepend2 $ pp st expr ++ [show name] ++ ["("] ++ pp st actual ++ [")"]) ++ [": _no_type"]
+  pp st Cond{condPred=e1,condThen=e2,condExpression=e3} =
+    ["#1", "_cond"] ++ (map prepend2 $ pp st e1 ++ pp st e2 ++ pp st e3) ++ [": _no_type"]
+  pp st Loop{loopPred=pred,loopBody=body} =
+    ["#1", "_loop"] ++ (map prepend2 $ pp st pred ++ pp st body) ++ [": _no_type"]
+  pp st TypCase{typCaseExpr=expr,typCaseCases=cases} =
+    ["#1", "_typcase"] ++ (map prepend2 $ pp st expr ++ pp st cases) ++ [": _no_type"]
+  pp st Block{blockBody=body} =
+    ["#1", "_block"] ++ (map prepend2 $ pp st body) ++ [": _no_type"]
+  pp st Let{letId=id,letType=typ,letInit=init,letBody=body} =
+    ["#1", "_let"] ++ (map prepend2 $ [show id, show typ] ++ pp st init ++ pp st body) ++ [": _no_type"]
+  pp st Plus{plusE1=e1,plusE2=e2} = ppBinary "_plus" e1 e2 st
+  pp st Sub{subE1=e1,subE2=e2} = ppBinary "_sub" e1 e2 st
+  pp st Mul{mulE1=e1,mulE2=e2} = ppBinary "_mul" e1 e2 st
+  pp st Divide{divideE1=e1,divideE2=e2} = ppBinary "_divide" e1 e2 st
+  pp st Neg{negE=e} = ["#1", "_neg"] ++ (map prepend2 $ pp st e) ++ [": _no_type"]
+  pp st Lt{ltE1=e1,ltE2=e2} = ppBinary "_lt" e1 e2 st
+  pp st Eq{eqE1=e1,eqE2=e2} = ppBinary "_eq" e1 e2 st
+  pp st Le{leE1=e1,leE2=e2} = ppBinary "_leq" e1 e2 st
+  pp st Comp{compE=e} = ["#1", "_comp"] ++ (map prepend2 $ pp st e) ++ [": _no_type"]
+  pp st IntConst{intConstToken=t} =
+    ["#1", "_int", "  " ++ st Map.! t, ": _no_type"]
+  pp st BoolConst{boolConstVal=b} =
+    ["#1", "_bool", "  " ++ (if b then "1" else "0"), ": _no_type"]
+  pp st StringConst{stringConstToken=t} =
+    ["#1", "_string", "  " ++ show (st Map.! t), ": _no_type"]
+  pp st New{newType=typ} =
+    ["#1", "_new", "  " ++ show typ, ": _no_type"]
+  pp st IsVoid{isVoidE=e} = ["#1", "_comp"] ++ (map prepend2 $ pp st e) ++ [": _no_type"]
+  pp st NoExpr = ["#1", "_no_expr", ": _no_type"]
+  pp st Object{objectName=s} = ["#1", "_object", "  " ++ show s, ": _no_type"]
+
+ppBinary :: String -> Expression -> Expression -> Map.Map Symbol String -> [String]
+ppBinary name e1 e2 st =
+  ["#1", name] ++ (map prepend2 $ pp st e1 ++ pp st e2) ++ [": _no_type"]
+  
+instance StanfordPP Case where
+  pp st Branch{branchName=name,branchType=typ,branchExpr=expr} =
+    ["#1", "_branch"] ++ (map prepend2 $ [show name, show typ] ++ pp st expr)
 
 }
