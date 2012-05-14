@@ -11,9 +11,9 @@ lexer: src/LexMain.hs src/Lexer.x
 	cd src; $(LEX) $(LEXOPTS) Lexer.x
 	$(GHC) $(GHCOPTS) -o lexer src/Lexer.hs src/LexMain.hs
 
-parser: src/ParseMain.hs src/Parser.y lexer src/Syntax.hs
+parser: src/ParseMain.hs src/Parser.y lexer src/Syntax.hs src/ParserPrettyPrint.hs
 	cd src; $(PARSE) $(PARSEOPTS) Parser.y
-	$(GHC) $(GHCOPTS) -o parser src/ParseMain.hs src/Parser.hs src/Syntax.hs src/Lexer.hs
+	$(GHC) $(GHCOPTS) -o parser src/ParseMain.hs src/Parser.hs src/Syntax.hs src/Lexer.hs src/ParserPrettyPrint.hs
 
 debug: LEXOPTS += -d
 debug: PARSEOPTS += -ad

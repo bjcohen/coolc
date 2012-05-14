@@ -6,6 +6,7 @@ import Control.Monad (when)
 import System (getArgs)
 import Directory (doesFileExist)
 import Control.Monad.State (evalStateT)
+import Parser.PrettyPrint (pp)
 
 main :: IO ()
 main = do
