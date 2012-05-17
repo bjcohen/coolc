@@ -11,7 +11,7 @@ import Syntax
 %name cool
 %tokentype { Token }
 %error { parseError }
-%monad { StateT (Int, String) StringTable }
+%monad { ParseState }
 
 %token
                     -- error is 0
@@ -77,24 +77,6 @@ program :: { Program }
 program :
     class ";" class_list                                       { Program{programClasses=$1:$3} }
 
-my_error : error anything { ParseError "error in ###" }
-anything :
-    class_list            {  }
-  | class                 {  }
-  | feature_list          {  }
-  | feature               {  }
-  | formallist            {  }
-  | formallist_opt        {  }
-  | formal                {  }
-  | expr                  {  }
-  | expr_case_item        {  }
-  | expr_case_list        {  }
-  | optassign             {  }
-  | expr_seq              {  }
-  | arglist               {  }
-  | arglist_opt           {  }
-  | type_id               {  }
-
 class_list :: { Classes }
 class_list :
     class ";" class_list                                       { $1:$3 }
@@ -138,7 +120,7 @@ expr :
   | obj_id "(" arglist ")"                                     { Dispatch{dispatchExpr=Object{objectName=newSymbol "self"},dispatchName=newSymbol $1,dispatchActual=$3} }
   | "if" expr "then" expr "else" expr "fi"                     { Cond{condPred=$2,condThen=$4,condExpression=$6} }
   | "while" expr "loop" expr "pool"                            { Loop{loopPred=$2,loopBody=$4} }
-  | "{" expr ";" expr_seq "}"                                  { Block{blockBody=$2:$4} }
+  | "{" expr_plus "}"                                          { Block{blockBody=$2} }
   | "let" obj_id ":" type_id optassign expr_let_items "in" expr %prec LET
                                                                { Let{letId=newSymbol $2,letType=newSymbol $4,letInit=$5,letBody=mkLetBody $6 $8} }
   | "case" expr "of" expr_case_list "esac"                     { TypCase{typCaseExpr=$2,typCaseCases=$4} }
@@ -178,6 +160,11 @@ optassign :
     "<-" expr                                                  { $2 }
   |                                                            { NoExpr }
 
+expr_plus :: { Expressions }
+expr_plus :
+    expr ";" expr_seq                                         { $1:$3 }
+  |                                                           { [] }
+
 expr_seq :: { Expressions }
 expr_seq :
     expr ";" expr_seq                                          { $1:$3 }
@@ -195,6 +182,8 @@ arglist_opt :
 
 {
 
+type ParseState a = StateT (Int, String) StringTable a  
+  
 data StringTable a = StringTable (Map.Map Symbol String) a
                    
 instance Monad StringTable where
@@ -204,11 +193,11 @@ instance Monad StringTable where
   return k =
     StringTable Map.empty k
 
-stAdd :: Symbol -> String -> StateT (Int, String) StringTable ()
+stAdd :: Symbol -> String -> ParseState ()
 stAdd sym str =
   StateT $ \i -> StringTable (Map.singleton sym str) ((), i)
 
-stAddAndReturn :: (Symbol -> Expression) -> String -> StateT (Int, String) StringTable Expression
+stAddAndReturn :: (Symbol -> Expression) -> String -> ParseState Expression
 stAddAndReturn c str = 
   do (n, s) <- get
      put (n+1, s)
@@ -216,7 +205,7 @@ stAddAndReturn c str =
      stAdd sym str
      return (c sym)
      
-stMkWithFilename :: SyntaxTerm a => (String -> a) -> StateT (Int,String) StringTable a
+stMkWithFilename :: SyntaxTerm a => (String -> a) -> ParseState a
 stMkWithFilename c =
   do (_, filename) <- get
      return (c filename)
@@ -232,7 +221,7 @@ mkLetBody ((id,typ,init):las) ef =
 data ParseError = ParseError String
 instance SyntaxTerm ParseError
 
-parseError :: [Token] -> a
-parseError ts = error ("Parse error" ++ show ts)
+parseError :: [Token] -> ParseState a
+parseError ts = error $ show ts
 
 }
