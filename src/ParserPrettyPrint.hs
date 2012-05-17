@@ -65,7 +65,7 @@ instance StanfordPP Expression where
     ["#1", "_string", "  " ++ show (st Map.! t), ": _no_type"]
   pp st New{newType=typ} =
     ["#1", "_new", "  " ++ show typ, ": _no_type"]
-  pp st IsVoid{isVoidE=e} = ["#1", "_comp"] ++ (map prepend2 $ pp st e) ++ [": _no_type"]
+  pp st IsVoid{isVoidE=e} = ["#1", "_isvoid"] ++ (map prepend2 $ pp st e) ++ [": _no_type"]
   pp st NoExpr = ["#1", "_no_expr", ": _no_type"]
   pp st Object{objectName=s} = ["#1", "_object", "  " ++ show s, ": _no_type"]
 
