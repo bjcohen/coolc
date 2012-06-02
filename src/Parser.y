@@ -12,6 +12,7 @@ import Syntax
 %tokentype { Token }
 %error { parseError }
 %monad { ParseState }
+%lexer { lexwrap } { Token _ TEOF _ }
 
 %token
                     -- error is 0
@@ -56,8 +57,7 @@ import Syntax
   "."               { Token _ (TPUNC PPERIOD) _ }
   ","               { Token _ (TPUNC PCOMMA) _ } -- 40
   "@"               { Token _ (TPUNC PAT) _ }
-  eof               { Token _ TEOF _ }                    
-                    -- %eof is 43
+                    -- %eof is 42
 --lexerror          { Token _ (TERROR $$) _ }
 
 %right "<-"
@@ -80,7 +80,7 @@ program :
 class_list :: { Classes }
 class_list :
     class ";" class_list                                       { $1:$3 }
-  | eof                                                        { [] }
+  |                                                            { [] }
 
 class :: { Class }
 class :
@@ -182,7 +182,8 @@ arglist_opt :
 
 {
 
-type ParseState a = StateT (Int, String) StringTable a  
+-- Symbol ID, Filename, Tokens to Process, Line Number
+type ParseState a = StateT (Int, String, [Token], Int) StringTable a
   
 data StringTable a = StringTable (Map.Map Symbol String) a
                    
@@ -199,15 +200,15 @@ stAdd sym str =
 
 stAddAndReturn :: (Symbol -> Expression) -> String -> ParseState Expression
 stAddAndReturn c str = 
-  do (n, s) <- get
-     put (n+1, s)
+  do (n, s, tl, ln) <- get
+     put (n+1, s, tl, ln)
      sym <- return (newSymbol n)
      stAdd sym str
      return (c sym)
      
 stMkWithFilename :: SyntaxTerm a => (String -> a) -> ParseState a
 stMkWithFilename c =
-  do (_, filename) <- get
+  do (_, filename, _, _) <- get
      return (c filename)
      
 stGet :: StringTable a -> (Map.Map Symbol String, a)     
@@ -218,10 +219,20 @@ mkLetBody [] ef = ef
 mkLetBody ((id,typ,init):las) ef =
   Let{letId=newSymbol id,letType=newSymbol typ,letInit=init,letBody=mkLetBody las ef}
 
-data ParseError = ParseError String
+newtype ParseError = ParseError String
 instance SyntaxTerm ParseError
 
-parseError :: [Token] -> ParseState a
-parseError ts = error $ show ts
+parseError :: Token -> ParseState a
+parseError tok = do (n, s, ts, ln) <- get
+                    error (show s ++ ", line " ++ show ln ++ ": syntax error at or near " ++ show tok)
+
+lexwrap :: (Token -> ParseState a) -> ParseState a
+lexwrap cont = lexer >>= (\tok -> cont tok)
+
+lexer :: ParseState Token
+lexer = do (n, s, t:ts, _) <- get
+           let Token (AlexPn _ ln _) _ _ = t
+           put (n, s, ts, ln)
+           return t
 
 }

@@ -16,5 +16,5 @@ main = do
   when (not flag) (error (filename ++ " does not exist"))
   t <- readFile filename
   toks <- (return $ case (scanner t) of Left er -> error er; Right toks -> toks)
-  let (st, p) = stGet $ evalStateT (cool toks) (0, filename)
+  let (st, p) = stGet $ evalStateT cool (0, filename, toks, 0)
   mapM_ putStrLn (pp st p)
