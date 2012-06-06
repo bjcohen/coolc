@@ -12,3 +12,5 @@ parser
 *.info
 ec2_host
 *.aps
+*.swp
+semant

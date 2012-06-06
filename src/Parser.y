@@ -95,7 +95,7 @@ feature_list :
 feature :: { Feature }
 feature :  
     obj_id "(" formallist ")" ":" type_id "{" expr "}"         { Method{methodName=newSymbol $1,methodFormals=$3,methodReturnType=newSymbol $6,methodExpr=$8} }
-  | obj_id ":" type_id                                         { Attr{attrName=newSymbol $1,attrType=newSymbol $3,attrInit=NoExpr} }
+  | obj_id ":" type_id                                         { Attr{attrName=newSymbol $1,attrType=newSymbol $3,attrInit=mkE NoExpr} }
   | obj_id ":" type_id "<-" expr                               { Attr{attrName=newSymbol $1,attrType=newSymbol $3,attrInit=$5} }
 
 formallist :: { Formals }                       
@@ -114,32 +114,32 @@ formal :
 
 expr :: { Expression }
 expr :
-    obj_id "<-" expr                                           { Assign{assignName=newSymbol $1,assignExpr=$3} }
-  | expr "." obj_id "(" arglist ")"                            { Dispatch{dispatchExpr=$1,dispatchName=newSymbol $3,dispatchActual=$5} }
-  | expr "@" type_id "." obj_id "(" arglist ")"                { StaticDispatch{staticDispatchExpr=$1,staticDispatchType=newSymbol $3,staticDispatchName=newSymbol $5,staticDispatchActual=$7} }
-  | obj_id "(" arglist ")"                                     { Dispatch{dispatchExpr=Object{objectName=newSymbol "self"},dispatchName=newSymbol $1,dispatchActual=$3} }
-  | "if" expr "then" expr "else" expr "fi"                     { Cond{condPred=$2,condThen=$4,condExpression=$6} }
-  | "while" expr "loop" expr "pool"                            { Loop{loopPred=$2,loopBody=$4} }
-  | "{" expr_plus "}"                                          { Block{blockBody=$2} }
+    obj_id "<-" expr                                           { mkE Assign{assignName=newSymbol $1,assignExpr=$3} }
+  | expr "." obj_id "(" arglist ")"                            { mkE Dispatch{dispatchExpr=$1,dispatchName=newSymbol $3,dispatchActual=$5} }
+  | expr "@" type_id "." obj_id "(" arglist ")"                { mkE StaticDispatch{staticDispatchExpr=$1,staticDispatchType=newSymbol $3,staticDispatchName=newSymbol $5,staticDispatchActual=$7} }
+  | obj_id "(" arglist ")"                                     { mkE Dispatch{dispatchExpr=mkE Object{objectName=newSymbol "self"},dispatchName=newSymbol $1,dispatchActual=$3} }
+  | "if" expr "then" expr "else" expr "fi"                     { mkE Cond{condPred=$2,condThen=$4,condExpression=$6} }
+  | "while" expr "loop" expr "pool"                            { mkE Loop{loopPred=$2,loopBody=$4} }
+  | "{" expr_plus "}"                                          { mkE Block{blockBody=$2} }
   | "let" obj_id ":" type_id optassign expr_let_items "in" expr %prec LET
-                                                               { Let{letId=newSymbol $2,letType=newSymbol $4,letInit=$5,letBody=mkLetBody $6 $8} }
-  | "case" expr "of" expr_case_list "esac"                     { TypCase{typCaseExpr=$2,typCaseCases=$4} }
-  | "new" type_id                                              { New{newType=newSymbol $2} }
-  | "isvoid" expr                                              { IsVoid{isVoidE=$2} }
-  | expr "+" expr                                              { Plus{plusE1=$1,plusE2=$3} }
-  | expr "-" expr                                              { Sub{subE1=$1,subE2=$3} }
-  | expr "*" expr                                              { Mul{mulE1=$1,mulE2=$3} }
-  | expr "/" expr                                              { Divide{divideE1=$1,divideE2=$3} }
-  | "~" expr                                                   { Neg{negE=$2} }
-  | expr "<" expr                                              { Lt{ltE1=$1,ltE2=$3} }
-  | expr "<=" expr                                             { Le{leE1=$1,leE2=$3} }
-  | expr "=" expr                                              { Eq{eqE1=$1,eqE2=$3} }
-  | "not" expr                                                 { Comp{compE=$2} }
+                                                               { mkE Let{letId=newSymbol $2,letType=newSymbol $4,letInit=$5,letBody=mkLetBody $6 $8} }
+  | "case" expr "of" expr_case_list "esac"                     { mkE TypCase{typCaseExpr=$2,typCaseCases=$4} }
+  | "new" type_id                                              { mkE New{newType=newSymbol $2} }
+  | "isvoid" expr                                              { mkE IsVoid{isVoidE=$2} }
+  | expr "+" expr                                              { mkE Plus{plusE1=$1,plusE2=$3} }
+  | expr "-" expr                                              { mkE Sub{subE1=$1,subE2=$3} }
+  | expr "*" expr                                              { mkE Mul{mulE1=$1,mulE2=$3} }
+  | expr "/" expr                                              { mkE Divide{divideE1=$1,divideE2=$3} }
+  | "~" expr                                                   { mkE Neg{negE=$2} }
+  | expr "<" expr                                              { mkE Lt{ltE1=$1,ltE2=$3} }
+  | expr "<=" expr                                             { mkE Le{leE1=$1,leE2=$3} }
+  | expr "=" expr                                              { mkE Eq{eqE1=$1,eqE2=$3} }
+  | "not" expr                                                 { mkE Comp{compE=$2} }
   | "(" expr ")"                                               { $2 }
-  | obj_id                                                     { Object{objectName=newSymbol $1} }
-  | int_const                                                  {% stAddAndReturn (\e -> IntConst{intConstToken=e}) $1 }
-  | str_const                                                  {% stAddAndReturn (\e -> StringConst{stringConstToken=e}) $1 }
-  | bool_const                                                 { BoolConst{boolConstVal=$1} }
+  | obj_id                                                     { mkE Object{objectName=newSymbol $1} }
+  | int_const                                                  {% stAddAndReturn (\e -> mkE IntConst{intConstToken=e}) $1 }
+  | str_const                                                  {% stAddAndReturn (\e -> mkE StringConst{stringConstToken=e}) $1 }
+  | bool_const                                                 { mkE BoolConst{boolConstVal=$1} }
 
 expr_case_item :: { Case }
 expr_case_item :
@@ -158,7 +158,7 @@ expr_let_items :
 optassign :: { Expression }
 optassign :
     "<-" expr                                                  { $2 }
-  |                                                            { NoExpr }
+  |                                                            { mkE NoExpr }
 
 expr_plus :: { Expressions }
 expr_plus :
@@ -217,7 +217,10 @@ stGet (StringTable m k) = (m, k)
 mkLetBody :: [(String, String, Expression)] -> Expression -> Expression     
 mkLetBody [] ef = ef
 mkLetBody ((id,typ,init):las) ef =
-  Let{letId=newSymbol id,letType=newSymbol typ,letInit=init,letBody=mkLetBody las ef}
+  mkE Let{letId=newSymbol id,letType=newSymbol typ,letInit=init,letBody=mkLetBody las ef}
+
+mkE :: ExpressionBody -> Expression
+mkE e = Expression e NoType
 
 newtype ParseError = ParseError String
 instance SyntaxTerm ParseError

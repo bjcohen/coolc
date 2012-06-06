@@ -53,9 +53,10 @@ data Formal =
   deriving (Eq,Show)
 
 type Expressions = [Expression]
-data Expression =
+data Expression = Expression ExpressionBody Type deriving (Eq,Show)
+data ExpressionBody =
   Assign               { assignName           :: Symbol
-                       , assignExpr           :: Expression }
+                       , assignExpr           :: Expression } 
   | StaticDispatch     { staticDispatchExpr   :: Expression
                        , staticDispatchType   :: Symbol
                        , staticDispatchName   :: Symbol
@@ -106,3 +107,5 @@ data Case =
                        , branchType           :: Symbol
                        , branchExpr           :: Expression }
   deriving (Eq,Show)
+           
+data Type = NoType | Type Symbol deriving (Eq,Show)
