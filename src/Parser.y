@@ -1,11 +1,11 @@
--- TODO: error handling: class defs, features, let bindings, blocks
-
 {
 module Parser where
 import qualified Data.Map as Map
 import Control.Monad.State
 import Lexer
 import Syntax
+import SCUtil
+import Type
 }
 
 %name cool
@@ -185,25 +185,16 @@ arglist_opt :
 -- Symbol ID, Filename, Tokens to Process, Line Number
 type ParseState a = StateT (Int, String, [Token], Int) StringTable a
   
-data StringTable a = StringTable (Map.Map Symbol String) a
-                   
-instance Monad StringTable where
-  (StringTable st a) >>= f =
-    StringTable (Map.union st st') b
-      where StringTable st' b = f a
-  return k =
-    StringTable Map.empty k
-
 stAdd :: Symbol -> String -> ParseState ()
-stAdd sym str =
-  StateT $ \i -> StringTable (Map.singleton sym str) ((), i)
+stAdd sym tr =
+  StateT $ \i -> (tAdd sym tr) ((), i)
 
 stAddAndReturn :: (Symbol -> Expression) -> String -> ParseState Expression
-stAddAndReturn c str = 
+stAddAndReturn c tr = 
   do (n, s, tl, ln) <- get
      put (n+1, s, tl, ln)
      sym <- return (newSymbol n)
-     stAdd sym str
+     stAdd sym tr
      return (c sym)
      
 stMkWithFilename :: SyntaxTerm a => (String -> a) -> ParseState a
@@ -212,8 +203,8 @@ stMkWithFilename c =
      return (c filename)
      
 stGet :: StringTable a -> (Map.Map Symbol String, a)     
-stGet (StringTable m k) = (m, k)
-
+stGet st = (tGetT st, tGetV st)
+                    
 mkLetBody :: [(String, String, Expression)] -> Expression -> Expression     
 mkLetBody [] ef = ef
 mkLetBody ((id,typ,init):las) ef =

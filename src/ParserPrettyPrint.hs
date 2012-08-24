@@ -1,6 +1,7 @@
 module Parser.PrettyPrint where
 import Syntax
-import Parser
+import Type
+import SCUtil
 import qualified Data.Map as Map
 
 class StanfordPP b where

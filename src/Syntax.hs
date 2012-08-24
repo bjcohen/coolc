@@ -1,19 +1,9 @@
 module Syntax where
-          
-newtype Symbol = Symbol String deriving (Eq,Ord)
+import SCUtil          
+import Type
 
-instance Show Symbol where
-  show (Symbol s) = s
+type StringTable = TableM Symbol String
 
-class Symbolable a where
-  newSymbol :: a -> Symbol
-
-instance Symbolable String where
-  newSymbol = Symbol
-  
-instance Symbolable Int where
-  newSymbol i = Symbol $ show i
-  
 class SyntaxTerm a  
 instance SyntaxTerm a => SyntaxTerm [a]
 instance SyntaxTerm Program  
@@ -51,6 +41,12 @@ data Formal =
   Formal               { formalName           :: Symbol
                        , formalType           :: Symbol }
   deriving (Eq,Show)
+
+mkExpr :: ExpressionBody -> Type -> Expression
+mkExpr = Expression
+
+typeOf :: Expression -> Type
+typeOf (Expression _ t) = t
 
 type Expressions = [Expression]
 data Expression = Expression ExpressionBody Type deriving (Eq,Show)
@@ -107,5 +103,3 @@ data Case =
                        , branchType           :: Symbol
                        , branchExpr           :: Expression }
   deriving (Eq,Show)
-           
-data Type = NoType | Type Symbol deriving (Eq,Show)
