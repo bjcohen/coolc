@@ -104,14 +104,17 @@ formal = do
 
 expr :: CoolParser Expression
 expr =
-  do e <- expr' 
+  buildExpressionParser operatorTable expr'
+  
+expr' :: CoolParser Expression
+expr' =
+  do e <- expr''
      exprrest e
-  <|> expr'
+  <|> expr''
   <?> "expr"
 
-expr' :: CoolParser Expression
-expr' = 
--- try (buildExpressionParser operatorTable term)
+expr'' :: CoolParser Expression
+expr'' = 
   try (parens expr)
   <|> do { reservedOp "~"; e <- expr; return $ mkE Neg{negE=e}}
   <|> do { reservedOp "isvoid"; e <- expr; return $ mkE IsVoid{isVoidE=e}}
@@ -163,41 +166,11 @@ exprrest e =
         args <- parens (sepBy expr comma);
         return $ mkE StaticDispatch{staticDispatchExpr=e,staticDispatchType=newSymbol typ,
                                     staticDispatchName=newSymbol name,
-                                    staticDispatchActual=args}}
-   <|> exprrestchainer e mulop
-   <|> exprrestchainer e addop
-   <|> exprrestchainer e cmpop)
+                                    staticDispatchActual=args}})
    >>= \e' -> exprrest e')
   <|> return e
   <?> "exprrest"
 
-mulop :: CoolParser (Expression -> Expression -> Expression)
-mulop =
-  do { reservedOp "*"; return (\e1 e2 -> mkE Mul{mulE1=e1,mulE2=e2}) }
-  <|> do { reservedOp "/"; return (\e1 e2 -> mkE Divide{divideE1=e1,divideE2=e2}) }
-
-addop :: CoolParser (Expression -> Expression -> Expression)
-addop =
-  do { reservedOp "+"; return (\e1 e2 -> mkE Plus{plusE1=e1,plusE2=e2}) }
-  <|> do { reservedOp "-"; return (\e1 e2 -> mkE Sub{subE1=e1,subE2=e2}) }
-
-cmpop :: CoolParser (Expression -> Expression -> Expression)
-cmpop =
-  do { reservedOp "<="; return (\e1 e2 -> mkE Le{leE1=e1,leE2=e2}) }
-  <|> do { reservedOp "<"; return (\e1 e2 -> mkE Lt{ltE1=e1,ltE2=e2}) }
-  <|> do { reservedOp "="; return (\e1 e2 -> mkE Eq{eqE1=e1,eqE2=e2}) }
-  
-exprrestchainer :: Expression -> CoolParser (Expression -> Expression -> Expression)
-                   -> CoolParser Expression
-exprrestchainer x op  =
-  do { f <- op; y <- expr; rest (f x y) op }
-    where
-      rest x' op' = exprrestchainer x' op' <|> return x'
-
-isSameBinOp :: Expression -> Expression -> Bool
-isSameBinOp (Expression Mul{} _) (Expression Mul{} _) = True
-isSameBinOp _ _ = False
-      
 operatorTable :: [[Operator String UserData ParseMonad Expression]]
 operatorTable =
   [ [prefix "~" (\e -> mkE $ Neg{negE=e})],
