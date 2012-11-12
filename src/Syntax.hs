@@ -34,6 +34,7 @@ data Feature =
   | Attr               { attrName             :: Symbol
                        , attrType             :: Symbol
                        , attrInit             :: Expression }
+  | FeatureErr
   deriving (Eq,Show)
 
 type Formals = [Formal]
@@ -72,6 +73,8 @@ data ExpressionBody =
                        , letType              :: Symbol
                        , letInit              :: Expression
                        , letBody              :: Expression }
+  | LetError           { letErrorMessage      :: String
+                       , letErrorBody         :: Expression }
   | Plus               { plusE1               :: Expression
                        , plusE2               :: Expression }
   | Sub                { subE1                :: Expression

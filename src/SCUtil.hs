@@ -37,7 +37,10 @@ instance Show Symbol where
 class Symbolable a where
   newSymbol :: a -> Symbol
 
-instance Show a => Symbolable a where
+instance Symbolable String where
+  newSymbol = Symbol
+  
+instance Symbolable Int where
   newSymbol = Symbol . show
   
 combineSymbol :: Symbol -> Symbol -> Symbol

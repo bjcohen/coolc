@@ -81,14 +81,14 @@ feature = try (do
   init <- option (mkE NoExpr) (do { reservedOp "<-"; expr })
   return $ Attr{attrName=newSymbol name,attrType=newSymbol val_type,
                 attrInit=init})
-  <|> try (do
+  <|> do
   name <- obj_id
   args <- parens (sepBy formal comma)
   colon
   ret_type <- type_id
   body <- braces expr
   return $ Method{methodName=newSymbol name,methodFormals=args,
-                  methodReturnType=newSymbol ret_type,methodExpr=body})
+                  methodReturnType=newSymbol ret_type,methodExpr=body}
   <?> "feature"
 
 -- TODO: error handling - class, feature, let binding, expr inside block          
@@ -115,7 +115,7 @@ expr' =
 
 expr'' :: CoolParser Expression
 expr'' = 
-  try (parens expr)
+  parens expr
   <|> do { reservedOp "~"; e <- expr; return $ mkE Neg{negE=e}}
   <|> do { reservedOp "isvoid"; e <- expr; return $ mkE IsVoid{isVoidE=e}}
   <|> do { reservedOp "not"; e <- expr; return $ mkE Comp{compE=e}}
@@ -127,24 +127,20 @@ expr'' =
     args <- parens (sepBy expr comma);
     return $ mkE Dispatch{dispatchExpr=selfobj,dispatchName=newSymbol name,dispatchActual=args}})
   <|> try term
-  <|> try (do
+  <|> do
   { reserved "if"; e1 <- expr; reserved "then"; e2 <- expr;
     reserved "else"; e3 <- expr; reserved "fi";
-    return $ mkE Cond{condPred=e1,condThen=e2,condExpression=e3}})
-  <|> try (do
+    return $ mkE Cond{condPred=e1,condThen=e2,condExpression=e3}}
+  <|> do
   { reserved "while"; e1 <- expr; reserved "loop"; e2 <- expr;
-    reserved "pool"; return $ mkE Loop{loopPred=e1,loopBody=e2}})
+    reserved "pool"; return $ mkE Loop{loopPred=e1,loopBody=e2}}
   <|> do
   { e <- braces (endBy expr semi);
     return $ mkE Block{blockBody=e}}
   <|> do
   { reserved "let";
-    is <- sepBy1 ( do id <- obj_id; colon; typ <- type_id;                     
-                      e <- option (mkE NoExpr) (do asnarr; e <- expr; return e);
-                      return (id, typ, e) ) comma;
-    reserved "in";
-    e <- expr;
-    return $ mkLetBody is e }
+    lb <- letBodyP;
+    return lb }
   <|> do
   { reserved "case"; e <- expr; reserved "of";
     l <- many (do name <- obj_id; colon; typ <- type_id; reservedOp "=>"; e <- expr; semi;
@@ -157,7 +153,7 @@ expr'' =
 
 exprrest :: Expression -> CoolParser Expression
 exprrest e = 
-  (try
+  (
   (do { dot; name <- obj_id; args <- parens (sepBy expr comma);
         return $ mkE Dispatch{dispatchExpr=e,dispatchName=newSymbol name,
                               dispatchActual=args}}
@@ -170,6 +166,43 @@ exprrest e =
    >>= \e' -> exprrest e')
   <|> return e
   <?> "exprrest"
+
+letBodyP :: CoolParser Expression
+letBodyP =
+  try (do id <- obj_id; colon; typ <- type_id;                     
+          init <- option (mkE NoExpr) (do asnarr; e <- expr; return e);
+          comma;
+          e <- letBodyP;
+          return $ mkE Let{letId=newSymbol id,letType=newSymbol typ,
+                           letInit=init,letBody=e})
+  <|>
+  try (do id <- obj_id; colon; typ <- type_id;
+          init <- option (mkE NoExpr) (do asnarr; e <- expr; return e);
+          reserved "in";
+          e <- expr;
+          return $ mkE Let{letId=newSymbol id,letType=newSymbol typ,
+                           letInit=init,letBody=e})
+  <|>
+  skipRecover anyToken
+  -- try (do manyTill anyToken (try comma)
+  --         e <- letBodyP;
+  --         return $ mkE LetError{letErrorMessage="",letErrorBody=e})
+  -- <|>
+  -- do manyTill anyToken (try (reserved "in"))
+  --    e <- expr;
+  --    return $ mkE LetError{letErrorMessage="",letErrorBody=e}
+
+skipRecover :: ParsecT s u m a -> ParsecT s u m a
+skipRecover p =
+  ParsecT $ \s cok cerr eok eerr ->
+  unParser p s cok cok eok eerr
+     
+-- return (id, typ, e)
+
+-- mkLetBody :: [(String, String, Expression)] -> Expression -> Expression     
+-- mkLetBody [] ef = ef
+-- mkLetBody ((id,typ,init):las) ef =
+--   mkE Let{letId=newSymbol id,letType=newSymbol typ,letInit=init,letBody=mkLetBody las ef}
 
 operatorTable :: [[Operator String UserData ParseMonad Expression]]
 operatorTable =
@@ -194,7 +227,17 @@ term =     do { b <- boolLit; return $ mkE BoolConst{boolConstVal=b}}
        <|> do { name <- obj_id; return $ mkE Object{objectName=newSymbol name}}
        <?> "term"
        
--- TODO: error handling       
+-- TODO: error handling
+
+sepByOrError :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepByOrError p sep         = sepBy1 p sep <|> return []
+
+sepByOrError1 :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepByOrError1 p sep        = do{ x <- p
+                               ; xs <- many (sep >> p)
+                               ; return (x:xs)
+                               }
+
 
 cCase :: CoolParser Case
 cCase = do
@@ -291,11 +334,6 @@ boolLit = (lexeme ctokens $ try $
 
 mkE :: ExpressionBody -> Expression
 mkE e = Expression e NoType
-
-mkLetBody :: [(String, String, Expression)] -> Expression -> Expression     
-mkLetBody [] ef = ef
-mkLetBody ((id,typ,init):las) ef =
-  mkE Let{letId=newSymbol id,letType=newSymbol typ,letInit=init,letBody=mkLetBody las ef}
   
 selfobj :: Expression
 selfobj = mkE Object{objectName=newSymbol "self"};

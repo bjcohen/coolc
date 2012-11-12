@@ -51,7 +51,9 @@ instance StanfordPP ExpressionBody where
   pp st Block{blockBody=body} =
     ["#1", "_block"] ++ (map prepend2 $ pp st body) 
   pp st Let{letId=id,letType=typ,letInit=init,letBody=body} =
-    ["#1", "_let"] ++ (map prepend2 $ [show id, show typ] ++ pp st init ++ pp st body) 
+    ["#1", "_let"] ++ (map prepend2 $ [show id, show typ] ++ pp st init ++ pp st body)
+  pp st LetError{letErrorMessage=m,letErrorBody=body} =
+    ["#1", "_letError"] ++ pp st body
   pp st Plus{plusE1=e1,plusE2=e2} = ppBinary "_plus" e1 e2 st
   pp st Sub{subE1=e1,subE2=e2} = ppBinary "_sub" e1 e2 st
   pp st Mul{mulE1=e1,mulE2=e2} = ppBinary "_mul" e1 e2 st
